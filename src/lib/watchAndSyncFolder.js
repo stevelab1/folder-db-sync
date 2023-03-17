@@ -1,11 +1,11 @@
-import { MongoClient } from 'mongodb';
-import chokidar from 'chokidar';
-import fs from 'fs/promises';
-import path from 'path';
-import dotenv from 'dotenv';
+import { MongoClient } from "mongodb";
+import chokidar from "chokidar";
+import fs from "fs/promises";
+import path from "path";
+import dotenv from "dotenv";
 
 // Load environment variables from .env.local
-dotenv.config({ path: '.env.local' });
+dotenv.config({ path: ".env.local" });
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
@@ -42,24 +42,41 @@ async function syncFileToDB(filePath, collectionName) {
     const contents = await fs.readFile(filePath, 'utf-8');
     const document = JSON.parse(contents);
 
-    // perform validation as needed
-
     const fileName = path.basename(filePath, '.json');
-    const updateResult = await client
-      .db('ai_android_stories')
-      .collection(collectionName)
-      .updateOne({ fileName }, { $set: document }, { upsert: true });
-    console.log(`Updated ${fileName} in MongoDB. Matched count: ${updateResult.matchedCount}, Modified count: ${updateResult.modifiedCount}`);
+    const updateQuery = { ...document };
+    delete updateQuery._id; // Remove the _id field from the update query
 
-    if (!document._id && updateResult.upsertedId) {
-      document._id = updateResult.upsertedId._id;
+    const updateResult = await client
+      .db('NAME_OF_YOUR_DATABASE')
+      .collection(collectionName)
+      .updateOne({ fileName }, { $set: updateQuery }, { upsert: true });
+
+    console.log(
+      `Updated ${fileName} in MongoDB. Matched count: ${updateResult.matchedCount}, Modified count: ${updateResult.modifiedCount}`
+    );
+
+    if (!document._id) {
+      let _id;
+      if (updateResult.upsertedCount > 0) {
+        _id = updateResult.upsertedId._id;
+      } else {
+        const matchedDoc = await client
+          .db('NAME_OF_YOUR_DATABASE')
+          .collection(collectionName)
+          .findOne({ fileName });
+        _id = matchedDoc._id;
+      }
+
+      document._id = _id;
       await fs.writeFile(filePath, JSON.stringify(document, null, 2), 'utf-8');
-      console.log(`Updated JSON file with _id: ${document._id}`);
+      console.log(`Updated JSON file with _id: ${_id}`);
     }
   } catch (error) {
     console.error(`Error syncing ${filePath}:`, error);
   }
 }
+
+
 
 async function watchFolder(folderPath, collectionName) {
   const watcher = chokidar.watch(folderPath, {
@@ -91,21 +108,26 @@ async function watchFolder(folderPath, collectionName) {
   });
 }
 
-async function main() {
+async function watchMultipleFolders() {
   const dataFolderPath = path.join(__dirname, "..", "data");
-  const folders = await fs.readdir(dataFolderPath, { withFileTypes: true });
+  const folderNames = await fs.readdir(dataFolderPath);
 
-  const watchPromises = folders.map((folder) => {
-    if (folder.isDirectory()) {
-      const folderPath = path.join(dataFolderPath, folder.name);
-      console.log(`Watching folder: ${folderPath}`);
-      return watchFolder(folderPath, folder.name);
-    }
-  });
+  // Watch each folder and connect to the database
+  await Promise.all(
+    folderNames.map(async (folderName) => {
+      const folderPath = path.join(dataFolderPath, folderName);
+      const isDirectory = (await fs.stat(folderPath)).isDirectory();
 
-  await Promise.all(watchPromises);
+      if (isDirectory) {
+        await watchFolder(folderPath, folderName);
+      }
+    })
+  );
 }
 
+async function main() {
+  await watchMultipleFolders();
+}
 
 main().catch((error) => {
   console.error(error);
