@@ -1,0 +1,14 @@
+{
+  "name": "folder-db-sync",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "watch-folder": "node src/lib/watchAndSyncFolder.js"
+  },
+  "dependencies": {
+    "chokidar": "^3.5.3",
+    "dotenv": "^16.0.3",
+    "mongodb": "^5.1.0"
+  }
+}
