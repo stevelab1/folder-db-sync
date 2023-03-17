@@ -92,9 +92,20 @@ async function watchFolder(folderPath, collectionName) {
 }
 
 async function main() {
-  const folderPath = path.join(__dirname, "..", "data", "characters");
-  await watchFolder(folderPath, "characters");
+  const dataFolderPath = path.join(__dirname, "..", "data");
+  const folders = await fs.readdir(dataFolderPath, { withFileTypes: true });
+
+  const watchPromises = folders.map((folder) => {
+    if (folder.isDirectory()) {
+      const folderPath = path.join(dataFolderPath, folder.name);
+      console.log(`Watching folder: ${folderPath}`);
+      return watchFolder(folderPath, folder.name);
+    }
+  });
+
+  await Promise.all(watchPromises);
 }
+
 
 main().catch((error) => {
   console.error(error);
