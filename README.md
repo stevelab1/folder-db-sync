@@ -33,7 +33,7 @@ Folder-DB-Sync is a Node.js script that watches and synchronizes JSON files in m
 
 2. The script will watch the specified folders in the `data` directory and sync them with the MongoDB collections.
 
-3. Add, modify, or delete JSON files in the watched folders to see the changes reflected in the MongoDB collections.
+3. Add or modify JSON files in the watched folders to see the changes reflected in the MongoDB collections.
 
 ## License
 
